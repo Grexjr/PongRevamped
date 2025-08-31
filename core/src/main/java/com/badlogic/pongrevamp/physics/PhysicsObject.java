@@ -23,6 +23,7 @@ public interface PhysicsObject {
 
     void enforceTopSpeed(float delta);
 
+    void experienceDrag();
 
 
 

@@ -1,12 +1,9 @@
 package com.badlogic.pongrevamp.screens;
 
 import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.Input;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
-import com.badlogic.gdx.graphics.g2d.Sprite;
-import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.pongrevamp.PongRevamp;
@@ -17,7 +14,7 @@ import com.badlogic.pongrevamp.textureutils.TextureUtils;
 /** First screen of the application. Displayed after the application is created. */
 public class GameScreen implements Screen {
     // CONSTANTS
-
+    private static final int BOUNCE_TIMER_MAX = 50;
 
     final PongRevamp game;
     final float worldWidth;
@@ -29,7 +26,7 @@ public class GameScreen implements Screen {
     Paddle playerPaddle;
     Paddle opponentPaddle;
 
-    int playerScore, enemyScore;
+    int playerScore, enemyScore, bounceTimer;
     boolean isGameOver;
 
     public GameScreen(PongRevamp pongRevamp){
@@ -55,7 +52,8 @@ public class GameScreen implements Screen {
 
         // Sets ball position to center
         gameBall.setPosition(new Vector2(worldWidth/2,worldHeight/2));
-        //gameBall.setAcceleration(new Vector2(0.03f * delta, 0.03f * delta));
+        // Sets ball velocity to start the game
+        gameBall.setVelocity(new Vector2(gameBall.getBallSpeed() * delta,0));
 
         opponentPaddle.setPosition(new Vector2(worldWidth-1,(worldHeight/2) -2));
     }
@@ -80,35 +78,60 @@ public class GameScreen implements Screen {
         float delta = Gdx.graphics.getDeltaTime();
         gameBall.move(delta);
         playerPaddle.move(delta);
+        opponentPaddle.calcOpponentPaddleMove(gameBall.getPosition(),delta);
         opponentPaddle.move(delta);
         //System.out.println(playerPaddle.getVelocity()); //DEBUG
+
+        playerPaddle.experienceDrag();
+        opponentPaddle.experienceDrag();
 
         checkPaddleVertical(playerPaddle);
         checkPaddleVertical(opponentPaddle);
         checkBallVertical();
+        checkBallHorizontal();
+        bounceTimer++;
+
+        if(gameBall.getPhysRectangle().overlaps(playerPaddle.getPhysRectangle()) && bounceTimer > BOUNCE_TIMER_MAX){
+            gameBall.setCollided(false);
+            gameBall.bounce();
+            bounceTimer = 0;
+        }
+        if(gameBall.getPhysRectangle().overlaps(opponentPaddle.getPhysRectangle()) && bounceTimer > BOUNCE_TIMER_MAX){
+            gameBall.setCollided(false);
+            gameBall.bounce();
+            bounceTimer = 0;
+        }
 
         playerPaddle.enforceTopSpeed(delta);
         opponentPaddle.enforceTopSpeed(delta);
         gameBall.enforceTopSpeed(delta);
     }
 
-    private void checkPaddleVertical(Paddle paddle){
+    private void checkPaddleVertical(Paddle paddle){ // Can be in paddle class
         if(paddle.getPosition().y > worldHeight - paddle.getPaddleHeight()){ // minus 4 because of sprite height
-            paddle.setPosition(new Vector2(0,worldHeight - paddle.getPaddleHeight()));
+            paddle.setPosition(new Vector2(paddle.getPosition().x,worldHeight - paddle.getPaddleHeight()));
             paddle.setVelocity(new Vector2(0,0));
         }
         if(paddle.getPosition().y <= 0){
-            paddle.setPosition(new Vector2(0,0));
+            paddle.setPosition(new Vector2(paddle.getPosition().x,0));
             paddle.setVelocity(new Vector2(0,0));
         }
     }
 
-    private void checkBallVertical(){
-        if(gameBall.getSprite().getY() >= worldHeight - gameBall.getBallHeight()){
-            // Bounce ball up; apply velocity
+    private void checkBallVertical(){ // Can be in ball class
+        if(gameBall.getPosition().y >= worldHeight - gameBall.getBallHeight()){
+            gameBall.setPosition(new Vector2(gameBall.getPosition().x,worldHeight - gameBall.getBallHeight()));
+            gameBall.bounce();
         }
-        if(gameBall.getSprite().getY() <= 0){
-            // Bounce ball down; apply velocity
+        if(gameBall.getPosition().y <= 0){
+            gameBall.setPosition(new Vector2(gameBall.getPosition().x,0));
+            gameBall.bounce();
+        }
+    }
+
+    private void checkBallHorizontal(){
+        if(gameBall.getPosition().x >= worldWidth - gameBall.getBallWidth() || gameBall.getPosition().x <= 0){
+            gameBall.setPosition(new Vector2(worldWidth/2,worldHeight/2));
         }
     }
 

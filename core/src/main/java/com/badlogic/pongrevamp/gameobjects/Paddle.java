@@ -14,7 +14,7 @@ public class Paddle extends SiPhysOb implements Renderable {
     // CONSTANTS
     private static final float PADDLE_HEIGHT = 4f;
     private static final float PADDLE_WIDTH = 1f;
-    private static final float PADDLE_SPEED = 15f;
+    private static final float PADDLE_SPEED = 25f;
 
     private final Texture paddleTexture;
     private final Sprite paddleSprite;
@@ -69,6 +69,15 @@ public class Paddle extends SiPhysOb implements Renderable {
                 this.setAcceleration(new Vector2(0,-delta));
             }
         }
+    }
+
+    public void calcOpponentPaddleMove(Vector2 ballPos, float delta){
+        float opponentSpeedAdjust = 3f;
+        float paddleCenterAdjust = 0.5f;
+        // Makes it so the center of the paddle tracks the ball
+        float offset = (this.getPaddleHeight()/2) - paddleCenterAdjust;
+        float newY = (ballPos.y - (this.getPosition().y + offset));
+        this.changeAcceleration(new Vector2(0,opponentSpeedAdjust * newY * delta));
     }
 
 

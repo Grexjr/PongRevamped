@@ -12,10 +12,12 @@ public class Ball extends SiPhysOb implements Renderable {
     // CONSTANTS
     private static final float BALL_HEIGHT = 1f;
     private static final float BALL_WIDTH = 1f;
-    private static final float BALL_SPEED = 10f;
+    private static final float BALL_SPEED = 25f;
 
     private final Texture ballTexture;
     private final Sprite ballSprite;
+
+    private boolean hasCollided;
 
     public Ball(){
         super(
@@ -27,6 +29,7 @@ public class Ball extends SiPhysOb implements Renderable {
         this.ballTexture = TextureUtils.createPlaceholderTexture(Color.WHITE);
         this.ballSprite = new Sprite(ballTexture);
         this.ballSprite.setSize(BALL_WIDTH,BALL_HEIGHT);
+        this.hasCollided = true;
     }
 
     @Override
@@ -43,8 +46,12 @@ public class Ball extends SiPhysOb implements Renderable {
     // Phys obj methods
     @Override
     public void enforceTopSpeed(float delta){
-        if(this.getVelocity().x > (BALL_SPEED * delta) || this.getVelocity().y > (BALL_SPEED * delta)){
-            this.setVelocity(new Vector2(BALL_SPEED * delta,BALL_SPEED * delta));
+        float yVelocity = this.getVelocity().y;
+        if(yVelocity > (BALL_SPEED * delta)){
+            this.setVelocity(new Vector2(0,(BALL_SPEED * delta)));
+        }
+        if(yVelocity < -(BALL_SPEED * delta)){
+            this.setVelocity(new Vector2(0,-(BALL_SPEED * delta)));
         }
     }
 
@@ -54,11 +61,15 @@ public class Ball extends SiPhysOb implements Renderable {
 
     public float getBallSpeed(){return BALL_SPEED;}
 
+    public boolean getCollided(){return hasCollided;}
+    public void setCollided(boolean collision){hasCollided = collision;}
+
     // Bounce function
-    public void bounce(Vector2 normal){
-        float dotProduct = this.getVelocity().dot(normal);
-        Vector2 changeVector = new Vector2(normal.x * dotProduct, normal.y * dotProduct);
-        this.changeVelocity(changeVector);
+    public void bounce(){
+        if(!hasCollided) {
+            this.setVelocity(new Vector2(-this.getVelocity().x, -this.getVelocity().y));
+        }
+        hasCollided = true;
     }
 
 

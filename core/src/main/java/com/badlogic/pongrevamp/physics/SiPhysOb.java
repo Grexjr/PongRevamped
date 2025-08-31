@@ -60,6 +60,12 @@ public abstract class SiPhysOb implements PhysicsObject{
         changePosition(this.getVelocity());
     }
 
+    @Override
+    public void experienceDrag(){
+        if(Math.abs(this.velocity.x) > 0 || Math.abs(this.velocity.y) > 0){
+            this.setAcceleration(new Vector2(-velocity.x,-velocity.y));
+        }
+    }
 
 
 
