@@ -12,7 +12,7 @@ public class Ball extends SiPhysOb implements Renderable {
     // CONSTANTS
     private static final float BALL_HEIGHT = 1f;
     private static final float BALL_WIDTH = 1f;
-    private static final float BALL_SPEED = 25f;
+    private static final float BALL_SPEED_MAX = 25f;
 
     private final Texture ballTexture;
     private final Sprite ballSprite;
@@ -46,12 +46,20 @@ public class Ball extends SiPhysOb implements Renderable {
     // Phys obj methods
     @Override
     public void enforceTopSpeed(float delta){
+        //System.out.println("TOP SPEED ENFORCED!"); //DEBUG
         float yVelocity = this.getVelocity().y;
-        if(yVelocity > (BALL_SPEED * delta)){
-            this.setVelocity(new Vector2(0,(BALL_SPEED * delta)));
+        float xVelocity = this.getVelocity().x;
+        if(yVelocity > (BALL_SPEED_MAX)){
+            this.changeAcceleration(this.getVelocity().scl(-1));
         }
-        if(yVelocity < -(BALL_SPEED * delta)){
-            this.setVelocity(new Vector2(0,-(BALL_SPEED * delta)));
+        if(yVelocity < -(BALL_SPEED_MAX)){
+            this.changeAcceleration(this.getVelocity().scl(-1));
+        }
+        if(xVelocity != (BALL_SPEED_MAX)){
+            this.changeAcceleration(this.getVelocity().scl(-1));
+        }
+        if(xVelocity != -(BALL_SPEED_MAX)){
+            this.changeAcceleration(this.getVelocity().scl(-1));
         }
     }
 
@@ -59,15 +67,24 @@ public class Ball extends SiPhysOb implements Renderable {
 
     public float getBallWidth(){return BALL_WIDTH;}
 
-    public float getBallSpeed(){return BALL_SPEED;}
+    public float getBallSpeed(){return BALL_SPEED_MAX;}
 
     public boolean getCollided(){return hasCollided;}
     public void setCollided(boolean collision){hasCollided = collision;}
 
     // Bounce function
-    public void bounce(){
+    public void bounce(Vector2 bouncerVelocity, Vector2 bouncerNormal){
+        Vector2 n = bouncerNormal.nor();
+        Vector2 v = this.getVelocity();
         if(!hasCollided) {
-            this.setVelocity(new Vector2(-this.getVelocity().x, -this.getVelocity().y));
+            // Formula for reflection from the internet
+            // newVelocityVec = velocityVec - 2 * normalVec * dot(normalVec,velocityVec)
+            float dotProduct = n.dot(v);
+            Vector2 scaledNormal = n.scl(dotProduct);
+            Vector2 twiceNormal = scaledNormal.scl(2);
+            Vector2 subtractedBounce = v.sub(twiceNormal);
+
+            this.setVelocity(subtractedBounce.add(bouncerVelocity));
         }
         hasCollided = true;
     }

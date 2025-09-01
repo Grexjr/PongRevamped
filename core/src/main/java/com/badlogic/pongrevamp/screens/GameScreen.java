@@ -11,14 +11,21 @@ import com.badlogic.pongrevamp.gameobjects.Ball;
 import com.badlogic.pongrevamp.gameobjects.Paddle;
 import com.badlogic.pongrevamp.textureutils.TextureUtils;
 
+import java.util.Random;
+
 /** First screen of the application. Displayed after the application is created. */
 public class GameScreen implements Screen {
     // CONSTANTS
-    private static final int BOUNCE_TIMER_MAX = 50;
+    private static final int BOUNCE_TIMER_MAX = 10;
+    private static final Vector2 CEILING_NORMAL = new Vector2(0,-1); // can condense by just multiplying by -1
+    private static final Vector2 FLOOR_NORMAL = new Vector2(0,1);
+    private static final Vector2 PLAYER_NORMAL = new Vector2(1,0);
+    private static final Vector2 OPPONENT_NORMAL = new Vector2(-1,0);
 
     final PongRevamp game;
     final float worldWidth;
     final float worldHeight;
+    final Vector2 worldCenter;
 
     Texture backgroundTexture;
 
@@ -26,13 +33,15 @@ public class GameScreen implements Screen {
     Paddle playerPaddle;
     Paddle opponentPaddle;
 
-    int playerScore, enemyScore, bounceTimer;
+    int playerScore, opponentScore, bounceTimer, startTimer;
     boolean isGameOver;
 
     public GameScreen(PongRevamp pongRevamp){
         this.game = pongRevamp;
         this.worldWidth = game.viewport.getWorldWidth();
         this.worldHeight = game.viewport.getWorldHeight();
+
+        this.worldCenter = new Vector2(worldWidth/2,worldHeight/2);
 
         this.gameBall = new Ball();
 
@@ -50,12 +59,14 @@ public class GameScreen implements Screen {
         // Prepare your screen here.
         playerPaddle.setPosition(new Vector2(0,(worldHeight/2) - 2));
 
-        // Sets ball position to center
-        gameBall.setPosition(new Vector2(worldWidth/2,worldHeight/2));
-        // Sets ball velocity to start the game
-        gameBall.setVelocity(new Vector2(gameBall.getBallSpeed() * delta,0));
+        // Sets ball position and velocity to start the game
+        resetBall(delta);
 
         opponentPaddle.setPosition(new Vector2(worldWidth-1,(worldHeight/2) -2));
+
+        startTimer = 0;
+        playerScore = 0;
+        opponentScore = 0;
     }
 
     @Override
@@ -74,6 +85,7 @@ public class GameScreen implements Screen {
     }
 
     private void logic(){
+        startTimer++;
         setRectangles();
         float delta = Gdx.graphics.getDeltaTime();
         gameBall.move(delta);
@@ -87,19 +99,23 @@ public class GameScreen implements Screen {
 
         checkPaddleVertical(playerPaddle);
         checkPaddleVertical(opponentPaddle);
-        checkBallVertical();
-        checkBallHorizontal();
+        checkBallVertical(delta);
+        checkBallHorizontal(delta);
         bounceTimer++;
+
+        //System.out.println("Ball velocity: " + gameBall.getVelocity()); // DEBUG
 
         if(gameBall.getPhysRectangle().overlaps(playerPaddle.getPhysRectangle()) && bounceTimer > BOUNCE_TIMER_MAX){
             gameBall.setCollided(false);
-            gameBall.bounce();
+            gameBall.bounce(playerPaddle.getVelocity(),PLAYER_NORMAL);
             bounceTimer = 0;
+            //System.out.println("Hit Player!"); // DEBUG
         }
         if(gameBall.getPhysRectangle().overlaps(opponentPaddle.getPhysRectangle()) && bounceTimer > BOUNCE_TIMER_MAX){
             gameBall.setCollided(false);
-            gameBall.bounce();
+            gameBall.bounce(opponentPaddle.getVelocity(),OPPONENT_NORMAL);
             bounceTimer = 0;
+            //System.out.println("Hit Opponent!"); // DEBUG
         }
 
         playerPaddle.enforceTopSpeed(delta);
@@ -118,20 +134,30 @@ public class GameScreen implements Screen {
         }
     }
 
-    private void checkBallVertical(){ // Can be in ball class
+    private void checkBallVertical(float delta){ // Can be in ball class
         if(gameBall.getPosition().y >= worldHeight - gameBall.getBallHeight()){
-            gameBall.setPosition(new Vector2(gameBall.getPosition().x,worldHeight - gameBall.getBallHeight()));
-            gameBall.bounce();
+            gameBall.setCollided(false);
+            gameBall.bounce(new Vector2(),CEILING_NORMAL);
         }
         if(gameBall.getPosition().y <= 0){
-            gameBall.setPosition(new Vector2(gameBall.getPosition().x,0));
-            gameBall.bounce();
+            gameBall.setCollided(false);
+            gameBall.bounce(new Vector2(),FLOOR_NORMAL);
         }
     }
 
-    private void checkBallHorizontal(){
+    private void checkBallHorizontal(float delta){
         if(gameBall.getPosition().x >= worldWidth - gameBall.getBallWidth() || gameBall.getPosition().x <= 0){
-            gameBall.setPosition(new Vector2(worldWidth/2,worldHeight/2));
+            addScore();
+            resetBall(delta);
+        }
+    }
+
+    private void addScore(){
+        if(gameBall.getPosition().x > worldWidth -1){
+            playerScore += 1;
+        }
+        if(gameBall.getPosition().x < 0){
+            opponentScore += 1;
         }
     }
 
@@ -153,6 +179,19 @@ public class GameScreen implements Screen {
             gameBall.getSprite().getHeight());
     }
 
+    private void resetBall(float delta){ // Could probably go into ball
+        gameBall.setPosition(worldCenter);
+        gameBall.setVelocity(new Vector2());
+        boolean randDirection = new Random().nextBoolean();
+        float randYVelocity = new Random().nextFloat(-gameBall.getBallSpeed(),gameBall.getBallSpeed());
+        System.out.println("Random y: " + randYVelocity);
+        if(randDirection){
+            gameBall.setVelocity(new Vector2(gameBall.getBallSpeed() * delta,randYVelocity * delta));
+        } else {
+            gameBall.setVelocity(new Vector2(-(gameBall.getBallSpeed() * delta),randYVelocity * delta));
+        }
+    }
+
     private void draw(){
         ScreenUtils.clear(Color.BLACK);
         game.viewport.apply();
@@ -161,6 +200,9 @@ public class GameScreen implements Screen {
         game.batch.begin();
 
         game.batch.draw(backgroundTexture,0,0,worldWidth,worldHeight);
+
+        game.font.draw(game.batch,Integer.toString(playerScore),1,worldHeight);
+        game.font.draw(game.batch,Integer.toString(opponentScore),worldWidth-1-1,worldHeight);
 
         playerPaddle.updateRenderablePosition(playerPaddle.getPosition());
         playerPaddle.getSprite().draw(game.batch);

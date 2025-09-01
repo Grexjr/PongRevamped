@@ -72,7 +72,7 @@ public class Paddle extends SiPhysOb implements Renderable {
     }
 
     public void calcOpponentPaddleMove(Vector2 ballPos, float delta){
-        float opponentSpeedAdjust = 3f;
+        float opponentSpeedAdjust = 10f;
         float paddleCenterAdjust = 0.5f;
         // Makes it so the center of the paddle tracks the ball
         float offset = (this.getPaddleHeight()/2) - paddleCenterAdjust;
