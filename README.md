@@ -6,7 +6,8 @@ This project was generated with a template including simple application launcher
 
 ## Description
 
-A re-imagining of Pong where the player and enemy can dash to increase the velocity of the ball, adding interesting decision-making and fast-paced action to one of the most classic games in history.
+A re-imagining of Pong where the player and enemy can dash to increase the velocity of the ball, adding interesting decision-making and fast-paced action to one of the most classic games in history. Involves a custom-made 2D engine to handle movement of paddles and ball, as well as custom
+collision, position, and speed detection.
 
 ## Platforms
 

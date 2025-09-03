@@ -19,7 +19,7 @@ public class PongRevamp extends Game {
 
         this.batch = new SpriteBatch();
         this.font = new BitmapFont();
-        this.viewport = new FitViewport(20,20);
+        this.viewport = new FitViewport(50,50);
 
         this.font.setUseIntegerPositions(false);
         this.font.getData().setScale(viewport.getWorldHeight() / Gdx.graphics.getHeight());

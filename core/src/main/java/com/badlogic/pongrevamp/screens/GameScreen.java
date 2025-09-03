@@ -1,12 +1,9 @@
 package com.badlogic.pongrevamp.screens;
 
 import com.badlogic.gdx.Gdx;
-import com.badlogic.gdx.Input;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
-import com.badlogic.gdx.graphics.g2d.Sprite;
-import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.pongrevamp.PongRevamp;
@@ -17,11 +14,16 @@ import com.badlogic.pongrevamp.textureutils.TextureUtils;
 /** First screen of the application. Displayed after the application is created. */
 public class GameScreen implements Screen {
     // CONSTANTS
-
+    private static final int BOUNCE_TIMER_MAX = 10;
+    private static final Vector2 CEILING_NORMAL = new Vector2(0,-1); // can condense by just multiplying by -1
+    private static final Vector2 FLOOR_NORMAL = new Vector2(0,1);
+    private static final Vector2 PLAYER_NORMAL = new Vector2(1,0);
+    private static final Vector2 OPPONENT_NORMAL = new Vector2(-1,0);
 
     final PongRevamp game;
     final float worldWidth;
     final float worldHeight;
+    final Vector2 worldCenter;
 
     Texture backgroundTexture;
 
@@ -29,7 +31,7 @@ public class GameScreen implements Screen {
     Paddle playerPaddle;
     Paddle opponentPaddle;
 
-    int playerScore, enemyScore;
+    int playerScore, opponentScore, bounceTimer, startTimer;
     boolean isGameOver;
 
     public GameScreen(PongRevamp pongRevamp){
@@ -37,15 +39,15 @@ public class GameScreen implements Screen {
         this.worldWidth = game.viewport.getWorldWidth();
         this.worldHeight = game.viewport.getWorldHeight();
 
+        this.worldCenter = new Vector2(worldWidth/2,worldHeight/2);
+
         this.gameBall = new Ball();
 
         this.backgroundTexture = TextureUtils.createPlaceholderTexture(Color.BLACK);
 
-        this.playerPaddle = new Paddle();
-        this.opponentPaddle = new Paddle();
+        this.playerPaddle = new Paddle(PLAYER_NORMAL);
+        this.opponentPaddle = new Paddle(OPPONENT_NORMAL);
     }
-
-
 
     @Override
     public void show() {
@@ -53,11 +55,14 @@ public class GameScreen implements Screen {
         // Prepare your screen here.
         playerPaddle.setPosition(new Vector2(0,(worldHeight/2) - 2));
 
-        // Sets ball position to center
-        gameBall.setPosition(new Vector2(worldWidth/2,worldHeight/2));
-        //gameBall.setAcceleration(new Vector2(0.03f * delta, 0.03f * delta));
+        // Sets ball position and velocity to start the game
+        gameBall.resetBall(worldCenter,delta);
 
         opponentPaddle.setPosition(new Vector2(worldWidth-1,(worldHeight/2) -2));
+
+        startTimer = 0;
+        playerScore = 0;
+        opponentScore = 0;
     }
 
     @Override
@@ -76,58 +81,64 @@ public class GameScreen implements Screen {
     }
 
     private void logic(){
-        setRectangles();
         float delta = Gdx.graphics.getDeltaTime();
+
+        startTimer++;
+        setRectangles();
+
         gameBall.move(delta);
         playerPaddle.move(delta);
+        opponentPaddle.calcOpponentPaddleMove(gameBall.getPosition(),delta);
         opponentPaddle.move(delta);
-        //System.out.println(playerPaddle.getVelocity()); //DEBUG
 
-        checkPaddleVertical(playerPaddle);
-        checkPaddleVertical(opponentPaddle);
-        checkBallVertical();
+        playerPaddle.experienceDrag();
+        opponentPaddle.experienceDrag();
+
+        playerPaddle.checkPaddleVertical(worldHeight);
+        opponentPaddle.checkPaddleVertical(worldHeight);
+        gameBall.checkBallVertical(CEILING_NORMAL,FLOOR_NORMAL,worldHeight);
+        score(delta);
+
+        bounceTimer++;
+
+        //System.out.println("Ball velocity: " + gameBall.getVelocity()); // DEBUG
+
+        //Hit paddle functionality; can move to ball class too; onPaddleCollision()
+        // When i move this, it breaks. i don't know why. Suddenly the ball will sometimes disappear when hitting a
+        // paddle.
+        // I think it's the order of the conditions. I need to run this when rect overlap, then if bouncetimer is >.
+        if(gameBall.getPhysRectangle().overlaps(playerPaddle.getPhysRectangle()) && bounceTimer > BOUNCE_TIMER_MAX){
+            gameBall.setCollided(false);
+            gameBall.bounce(playerPaddle.getVelocity(),playerPaddle.getPaddleNormal());
+            bounceTimer = 0;
+            //System.out.println("Hit Player!"); // DEBUG
+        }
+        if(gameBall.getPhysRectangle().overlaps(opponentPaddle.getPhysRectangle()) && bounceTimer > BOUNCE_TIMER_MAX){
+            gameBall.setCollided(false);
+            gameBall.bounce(opponentPaddle.getVelocity(),opponentPaddle.getPaddleNormal());
+            bounceTimer = 0;
+            //System.out.println("Hit Opponent!"); // DEBUG
+        }
 
         playerPaddle.enforceTopSpeed(delta);
         opponentPaddle.enforceTopSpeed(delta);
         gameBall.enforceTopSpeed(delta);
     }
 
-    private void checkPaddleVertical(Paddle paddle){
-        if(paddle.getPosition().y > worldHeight - paddle.getPaddleHeight()){ // minus 4 because of sprite height
-            paddle.setPosition(new Vector2(0,worldHeight - paddle.getPaddleHeight()));
-            paddle.setVelocity(new Vector2(0,0));
+    private void score(float delta){
+        if(gameBall.getPosition().x > worldWidth -1){
+            playerScore += 1;
         }
-        if(paddle.getPosition().y <= 0){
-            paddle.setPosition(new Vector2(0,0));
-            paddle.setVelocity(new Vector2(0,0));
+        if(gameBall.getPosition().x < 0){
+            opponentScore += 1;
         }
+        gameBall.checkBallHorizontal(worldCenter,worldWidth,delta);
     }
 
-    private void checkBallVertical(){
-        if(gameBall.getSprite().getY() >= worldHeight - gameBall.getBallHeight()){
-            // Bounce ball up; apply velocity
-        }
-        if(gameBall.getSprite().getY() <= 0){
-            // Bounce ball down; apply velocity
-        }
-    }
-
-    private void setRectangles(){ // Can do this in the class itself
-        playerPaddle.getPhysRectangle().set(
-            playerPaddle.getSprite().getX(),
-            playerPaddle.getSprite().getY(),
-            playerPaddle.getSprite().getWidth(),
-            playerPaddle.getSprite().getHeight());
-        opponentPaddle.getPhysRectangle().set(
-            opponentPaddle.getSprite().getX(),
-            opponentPaddle.getSprite().getY(),
-            opponentPaddle.getSprite().getWidth(),
-            opponentPaddle.getSprite().getHeight());
-        gameBall.getPhysRectangle().set(
-            gameBall.getSprite().getX(),
-            gameBall.getSprite().getY(),
-            gameBall.getSprite().getWidth(),
-            gameBall.getSprite().getHeight());
+    private void setRectangles(){ // Can do this in the class itself of renderable
+        playerPaddle.setRectangle();
+        opponentPaddle.setRectangle();
+        gameBall.setRectangle();
     }
 
     private void draw(){
@@ -138,6 +149,9 @@ public class GameScreen implements Screen {
         game.batch.begin();
 
         game.batch.draw(backgroundTexture,0,0,worldWidth,worldHeight);
+
+        game.font.draw(game.batch,Integer.toString(playerScore),1,worldHeight);
+        game.font.draw(game.batch,Integer.toString(opponentScore),worldWidth-1-1,worldHeight);
 
         playerPaddle.updateRenderablePosition(playerPaddle.getPosition());
         playerPaddle.getSprite().draw(game.batch);
