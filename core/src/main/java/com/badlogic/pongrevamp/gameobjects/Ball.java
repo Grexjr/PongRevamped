@@ -8,6 +8,8 @@ import com.badlogic.gdx.math.Vector2;
 import com.badlogic.pongrevamp.physics.SiPhysOb;
 import com.badlogic.pongrevamp.textureutils.TextureUtils;
 
+import java.util.Random;
+
 public class Ball extends SiPhysOb implements Renderable {
     // CONSTANTS
     private static final float BALL_HEIGHT = 1f;
@@ -43,6 +45,16 @@ public class Ball extends SiPhysOb implements Renderable {
         ballSprite.setPosition(position.x,position.y);
     }
 
+    @Override
+    public void setRectangle(){
+        this.getPhysRectangle().set(
+            ballSprite.getX(),
+            ballSprite.getY(),
+            BALL_WIDTH,
+            BALL_HEIGHT
+        );
+    }
+
     // Phys obj methods
     @Override
     public void enforceTopSpeed(float delta){
@@ -72,6 +84,26 @@ public class Ball extends SiPhysOb implements Renderable {
     public boolean getCollided(){return hasCollided;}
     public void setCollided(boolean collision){hasCollided = collision;}
 
+    // can add vectors here as constants, or make them global...?
+    public void checkBallVertical(Vector2 CEILING_NORMAL,Vector2 FLOOR_NORMAL,float worldHeight){
+        if(this.getPosition().y >= worldHeight - BALL_HEIGHT){
+            System.out.println("Ball forced down!"); //DEBUG
+            hasCollided = false;
+            bounce(new Vector2(),CEILING_NORMAL);
+        }
+        if(this.getPosition().y <= 0){
+            System.out.println("Ball forced up!"); //DEBUG
+            hasCollided = false;
+            this.bounce(new Vector2(),FLOOR_NORMAL);
+        }
+    }
+
+    public void checkBallHorizontal(Vector2 worldCenter,float worldWidth,float delta){
+        if(this.getPosition().x >= worldWidth - BALL_WIDTH || this.getPosition().x <= 0){
+            resetBall(worldCenter,delta);
+        }
+    }
+
     // Bounce function
     public void bounce(Vector2 bouncerVelocity, Vector2 bouncerNormal){
         Vector2 n = bouncerNormal.nor();
@@ -89,10 +121,26 @@ public class Ball extends SiPhysOb implements Renderable {
         hasCollided = true;
     }
 
+    public void resetBall(Vector2 worldCenter,float delta){ // Could probably go into ball
+        this.setPosition(worldCenter);
+        this.setVelocity(new Vector2());
+        boolean randDirection = new Random().nextBoolean();
+        float randYVelocity = new Random().nextFloat(-this.getBallSpeed(),this.getBallSpeed());
+        //System.out.println("Random y: " + randYVelocity); //DEBUG
+        if(randDirection){
+            this.setVelocity(new Vector2(this.getBallSpeed() * delta,randYVelocity * delta));
+        } else {
+            this.setVelocity(new Vector2(-(this.getBallSpeed() * delta),randYVelocity * delta));
+        }
+    }
 
-
-
-
-
+    public void onPaddleCollision(Paddle paddle){
+        //Hit paddle functionality; can move to ball class too; onPaddleCollision()
+        if(this.getPhysRectangle().overlaps(paddle.getPhysRectangle())){
+            hasCollided = false;
+            bounce(paddle.getVelocity(),paddle.getPaddleNormal());
+            //System.out.println("Hit Paddle!"); // DEBUG
+        }
+    }
 
 }

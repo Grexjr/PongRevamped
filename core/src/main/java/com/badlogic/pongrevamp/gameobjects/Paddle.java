@@ -18,8 +18,9 @@ public class Paddle extends SiPhysOb implements Renderable {
 
     private final Texture paddleTexture;
     private final Sprite paddleSprite;
+    private final Vector2 paddleNormal;
 
-    public Paddle(){
+    public Paddle(Vector2 normal){
         super(
             new Vector2(),
             new Vector2(),
@@ -29,6 +30,7 @@ public class Paddle extends SiPhysOb implements Renderable {
         this.paddleTexture = TextureUtils.createPlaceholderTexture(Color.WHITE);
         this.paddleSprite = new Sprite(paddleTexture);
         paddleSprite.setSize(PADDLE_WIDTH,PADDLE_HEIGHT);
+        this.paddleNormal = normal;
     }
 
     @Override
@@ -40,6 +42,16 @@ public class Paddle extends SiPhysOb implements Renderable {
     @Override
     public void updateRenderablePosition(Vector2 position){
         paddleSprite.setPosition(position.x,position.y);
+    }
+
+    @Override
+    public void setRectangle(){
+        this.getPhysRectangle().set(
+            paddleSprite.getX(),
+            paddleSprite.getY(),
+            PADDLE_WIDTH,
+            PADDLE_HEIGHT
+        );
     }
 
     // Phys obj methods
@@ -60,6 +72,8 @@ public class Paddle extends SiPhysOb implements Renderable {
 
     public float getPaddleSpeed(){return PADDLE_SPEED;}
 
+    public Vector2 getPaddleNormal(){return paddleNormal;}
+
     public void movePlayerPaddle(float delta){
         if(this.getVelocity().y < PADDLE_SPEED){
             if (Gdx.input.isKeyPressed(Input.Keys.UP)) {
@@ -68,6 +82,18 @@ public class Paddle extends SiPhysOb implements Renderable {
             if(Gdx.input.isKeyPressed(Input.Keys.DOWN)){
                 this.setAcceleration(new Vector2(0,-delta));
             }
+        }
+        //System.out.println(playerPaddle.getVelocity()); //DEBUG
+    }
+
+    public void checkPaddleVertical(float worldHeight){ // Can be in paddle class
+        if(this.getPosition().y > worldHeight - this.getPaddleHeight()){ // minus 4 because of sprite height
+            this.setPosition(new Vector2(this.getPosition().x,worldHeight - this.getPaddleHeight()));
+            this.setVelocity(new Vector2(0,0));
+        }
+        if(this.getPosition().y <= 0){
+            this.setPosition(new Vector2(this.getPosition().x,0));
+            this.setVelocity(new Vector2(0,0));
         }
     }
 
@@ -79,10 +105,5 @@ public class Paddle extends SiPhysOb implements Renderable {
         float newY = (ballPos.y - (this.getPosition().y + offset));
         this.changeAcceleration(new Vector2(0,opponentSpeedAdjust * newY * delta));
     }
-
-
-
-
-
 
 }

@@ -11,8 +11,6 @@ import com.badlogic.pongrevamp.gameobjects.Ball;
 import com.badlogic.pongrevamp.gameobjects.Paddle;
 import com.badlogic.pongrevamp.textureutils.TextureUtils;
 
-import java.util.Random;
-
 /** First screen of the application. Displayed after the application is created. */
 public class GameScreen implements Screen {
     // CONSTANTS
@@ -47,11 +45,9 @@ public class GameScreen implements Screen {
 
         this.backgroundTexture = TextureUtils.createPlaceholderTexture(Color.BLACK);
 
-        this.playerPaddle = new Paddle();
-        this.opponentPaddle = new Paddle();
+        this.playerPaddle = new Paddle(PLAYER_NORMAL);
+        this.opponentPaddle = new Paddle(OPPONENT_NORMAL);
     }
-
-
 
     @Override
     public void show() {
@@ -60,7 +56,7 @@ public class GameScreen implements Screen {
         playerPaddle.setPosition(new Vector2(0,(worldHeight/2) - 2));
 
         // Sets ball position and velocity to start the game
-        resetBall(delta);
+        gameBall.resetBall(worldCenter,delta);
 
         opponentPaddle.setPosition(new Vector2(worldWidth-1,(worldHeight/2) -2));
 
@@ -85,35 +81,41 @@ public class GameScreen implements Screen {
     }
 
     private void logic(){
+        float delta = Gdx.graphics.getDeltaTime();
+
         startTimer++;
         setRectangles();
-        float delta = Gdx.graphics.getDeltaTime();
+
         gameBall.move(delta);
         playerPaddle.move(delta);
         opponentPaddle.calcOpponentPaddleMove(gameBall.getPosition(),delta);
         opponentPaddle.move(delta);
-        //System.out.println(playerPaddle.getVelocity()); //DEBUG
 
         playerPaddle.experienceDrag();
         opponentPaddle.experienceDrag();
 
-        checkPaddleVertical(playerPaddle);
-        checkPaddleVertical(opponentPaddle);
-        checkBallVertical(delta);
-        checkBallHorizontal(delta);
+        playerPaddle.checkPaddleVertical(worldHeight);
+        opponentPaddle.checkPaddleVertical(worldHeight);
+        gameBall.checkBallVertical(CEILING_NORMAL,FLOOR_NORMAL,worldHeight);
+        score(delta);
+
         bounceTimer++;
 
         //System.out.println("Ball velocity: " + gameBall.getVelocity()); // DEBUG
 
+        //Hit paddle functionality; can move to ball class too; onPaddleCollision()
+        // When i move this, it breaks. i don't know why. Suddenly the ball will sometimes disappear when hitting a
+        // paddle.
+        // I think it's the order of the conditions. I need to run this when rect overlap, then if bouncetimer is >.
         if(gameBall.getPhysRectangle().overlaps(playerPaddle.getPhysRectangle()) && bounceTimer > BOUNCE_TIMER_MAX){
             gameBall.setCollided(false);
-            gameBall.bounce(playerPaddle.getVelocity(),PLAYER_NORMAL);
+            gameBall.bounce(playerPaddle.getVelocity(),playerPaddle.getPaddleNormal());
             bounceTimer = 0;
             //System.out.println("Hit Player!"); // DEBUG
         }
         if(gameBall.getPhysRectangle().overlaps(opponentPaddle.getPhysRectangle()) && bounceTimer > BOUNCE_TIMER_MAX){
             gameBall.setCollided(false);
-            gameBall.bounce(opponentPaddle.getVelocity(),OPPONENT_NORMAL);
+            gameBall.bounce(opponentPaddle.getVelocity(),opponentPaddle.getPaddleNormal());
             bounceTimer = 0;
             //System.out.println("Hit Opponent!"); // DEBUG
         }
@@ -123,73 +125,20 @@ public class GameScreen implements Screen {
         gameBall.enforceTopSpeed(delta);
     }
 
-    private void checkPaddleVertical(Paddle paddle){ // Can be in paddle class
-        if(paddle.getPosition().y > worldHeight - paddle.getPaddleHeight()){ // minus 4 because of sprite height
-            paddle.setPosition(new Vector2(paddle.getPosition().x,worldHeight - paddle.getPaddleHeight()));
-            paddle.setVelocity(new Vector2(0,0));
-        }
-        if(paddle.getPosition().y <= 0){
-            paddle.setPosition(new Vector2(paddle.getPosition().x,0));
-            paddle.setVelocity(new Vector2(0,0));
-        }
-    }
-
-    private void checkBallVertical(float delta){ // Can be in ball class
-        if(gameBall.getPosition().y >= worldHeight - gameBall.getBallHeight()){
-            gameBall.setCollided(false);
-            gameBall.bounce(new Vector2(),CEILING_NORMAL);
-        }
-        if(gameBall.getPosition().y <= 0){
-            gameBall.setCollided(false);
-            gameBall.bounce(new Vector2(),FLOOR_NORMAL);
-        }
-    }
-
-    private void checkBallHorizontal(float delta){
-        if(gameBall.getPosition().x >= worldWidth - gameBall.getBallWidth() || gameBall.getPosition().x <= 0){
-            addScore();
-            resetBall(delta);
-        }
-    }
-
-    private void addScore(){
+    private void score(float delta){
         if(gameBall.getPosition().x > worldWidth -1){
             playerScore += 1;
         }
         if(gameBall.getPosition().x < 0){
             opponentScore += 1;
         }
+        gameBall.checkBallHorizontal(worldCenter,worldWidth,delta);
     }
 
-    private void setRectangles(){ // Can do this in the class itself
-        playerPaddle.getPhysRectangle().set(
-            playerPaddle.getSprite().getX(),
-            playerPaddle.getSprite().getY(),
-            playerPaddle.getSprite().getWidth(),
-            playerPaddle.getSprite().getHeight());
-        opponentPaddle.getPhysRectangle().set(
-            opponentPaddle.getSprite().getX(),
-            opponentPaddle.getSprite().getY(),
-            opponentPaddle.getSprite().getWidth(),
-            opponentPaddle.getSprite().getHeight());
-        gameBall.getPhysRectangle().set(
-            gameBall.getSprite().getX(),
-            gameBall.getSprite().getY(),
-            gameBall.getSprite().getWidth(),
-            gameBall.getSprite().getHeight());
-    }
-
-    private void resetBall(float delta){ // Could probably go into ball
-        gameBall.setPosition(worldCenter);
-        gameBall.setVelocity(new Vector2());
-        boolean randDirection = new Random().nextBoolean();
-        float randYVelocity = new Random().nextFloat(-gameBall.getBallSpeed(),gameBall.getBallSpeed());
-        System.out.println("Random y: " + randYVelocity);
-        if(randDirection){
-            gameBall.setVelocity(new Vector2(gameBall.getBallSpeed() * delta,randYVelocity * delta));
-        } else {
-            gameBall.setVelocity(new Vector2(-(gameBall.getBallSpeed() * delta),randYVelocity * delta));
-        }
+    private void setRectangles(){ // Can do this in the class itself of renderable
+        playerPaddle.setRectangle();
+        opponentPaddle.setRectangle();
+        gameBall.setRectangle();
     }
 
     private void draw(){
