@@ -15,6 +15,7 @@ public class TitleScreen implements Screen {
     // CONSTANTS
     private static final String TITLE_STRING = "PONG REVAMPED";
     private static final String INSTRUCTIONS_STRING = "PRESS 'SPACE' TO BEGIN";
+    private static final String CONTROLS_STRING = "Press 'SPACE' to dash in game!\nPress 'R' to restart!";
 
     final PongRevamp game;
     final float worldWidth;
@@ -63,7 +64,8 @@ public class TitleScreen implements Screen {
 
         game.batch.draw(backgroundTexture,0,0,worldWidth,worldHeight);
         game.font.draw(game.batch,TITLE_STRING,titleHorizontal,titleVertical);
-        game.font.draw(game.batch,INSTRUCTIONS_STRING,titleHorizontal,titleVertical-1);
+        game.font.draw(game.batch,INSTRUCTIONS_STRING,titleHorizontal,titleVertical-5);
+        game.font.draw(game.batch,CONTROLS_STRING,titleHorizontal,titleVertical-10);
 
         game.batch.end();
     }
@@ -92,7 +94,7 @@ public class TitleScreen implements Screen {
     public void hide() {
         // This method is called when another screen replaces this one.
         this.dispose();
-        System.out.println("TITLE SCREEN HIDDEN");
+        System.out.println("TITLE SCREEN HIDDEN AND DISPOSED");
     }
 
     @Override

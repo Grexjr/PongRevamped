@@ -1,6 +1,7 @@
 package com.badlogic.pongrevamp.screens;
 
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.Input;
 import com.badlogic.gdx.Screen;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.Texture;
@@ -78,6 +79,9 @@ public class GameScreen implements Screen {
         if(!isGameOver){
             this.playerPaddle.movePlayerPaddle(delta);
         }
+        if(Gdx.input.isKeyPressed(Input.Keys.R)){
+            game.setScreen(new TitleScreen(game));
+        }
     }
 
     private void logic(){
@@ -90,7 +94,6 @@ public class GameScreen implements Screen {
         playerPaddle.move(delta);
         opponentPaddle.calcOpponentPaddleMove(gameBall.getPosition(),delta);
         opponentPaddle.move(delta);
-
         playerPaddle.experienceDrag();
         opponentPaddle.experienceDrag();
 
@@ -188,6 +191,8 @@ public class GameScreen implements Screen {
     @Override
     public void hide() {
         // This method is called when another screen replaces this one.
+        this.dispose();
+        System.out.println("GAME SCREEN HIDDEN AND DISPOSED");
     }
 
     @Override
